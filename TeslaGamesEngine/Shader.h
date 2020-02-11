@@ -7,9 +7,14 @@
 
 #include <GL\glew.h>
 
+#include <glm\glm.hpp>
+#include <glm\gtc\matrix_transform.hpp>
+#include <glm\gtc\type_ptr.hpp>
+
 #include "DirectionalLight.h"
 #include "PointLight.h"
 #include "SpotLight.h"
+#include <stb_image.h>
 
 const int MAX_POINT_LIGHTS = 3;
 const int MAX_SPOT_LIGHTS = 3;
@@ -25,6 +30,7 @@ public:
 	//for hud shaders
 	void createHUDFromFiles(const char* vertexLocation, const char* fragmentLocation);
 
+	void Validate();
 
 	std::string ReadFile(const char* fileLocation);
 

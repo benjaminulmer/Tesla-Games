@@ -1,9 +1,9 @@
 #version 330
 
-in vec4 vCol;
 in vec2 TexCoord;
 in vec3 Normal;
 in vec3 FragPos;
+in vec4 FragPosLightSpace;
 
 out vec4 colour;
 
@@ -53,11 +53,29 @@ uniform PointLight pointLights[MAX_POINT_LIGHTS];
 uniform SpotLight spotLights[MAX_SPOT_LIGHTS];
 
 uniform sampler2D theTexture;
+uniform sampler2D shadowMap;
+
 uniform Material material;
 
 uniform vec3 eyePosition;
 
-vec4 CalcLightByDirection(Light light, vec3 direction)
+float ShadowCalculation(vec4 fragPosLightSpace)
+{
+    // perform perspective divide
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    // transform to [0,1] range
+    projCoords = projCoords * 0.5 + 0.5;
+    // get closest depth value from light's perspective (using [0,1] range fragPosLight as coords)
+    float closestDepth = texture(shadowMap, projCoords.xy).r; 
+    // get depth of current fragment from light's perspective
+    float currentDepth = projCoords.z;
+    // check whether current frag pos is in shadow
+    float shadow = currentDepth > closestDepth  ? 1.0 : 0.0;
+
+    return shadow;
+}
+
+vec4 CalcLightByDirection(Light light, vec3 direction, vec4 fragPosLightSpace))
 {
 	vec4 ambientColour = vec4(light.colour, 1.0f) * light.ambientIntensity;
 	
@@ -79,12 +97,14 @@ vec4 CalcLightByDirection(Light light, vec3 direction)
 		}
 	}
 
-	return (ambientColour + diffuseColour + specularColour);
+	float shadow = ShadowCalculation(fs_in.FragPosLightSpace); 
+
+	return (ambientColour + (1.0 - shadow) * (diffuseColour + specularColour));
 }
 
 vec4 CalcDirectionalLight()
 {
-	return CalcLightByDirection(directionalLight.base, directionalLight.direction);
+	return CalcLightByDirection(directionalLight.base, directionalLight.direction, FragPosLightSpace);
 }
 
 vec4 CalcPointLight(PointLight pLight)

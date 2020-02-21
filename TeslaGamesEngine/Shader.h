@@ -26,6 +26,9 @@ public:
 	void createHUDFromFiles(const char* vertexLocation, const char* fragmentLocation);
 
 
+	//for shadow shaders
+	void createShadowFromFiles(const char* vertexLocation, const char* fragmentLocation);
+
 	std::string ReadFile(const char* fileLocation);
 
 	GLuint GetProjectionLocation();
@@ -53,7 +56,7 @@ private:
 	int spotLightCount;
 
 	GLuint shaderID, uniformProjection, uniformModel, uniformView, uniformEyePosition,
-		uniformSpecularIntensity, uniformShininess;
+		uniformSpecularIntensity, uniformShininess, uniformLightPos, uniformLightSpaceMatrix;
 
 	struct {
 		GLuint uniformColour;
@@ -94,6 +97,7 @@ private:
 
 	void CompileShader(const char* vertexCode, const char* fragmentCode);
 	void compileHUDShader(const char* vertexCode, const char* fragmentCode);
+	void CompileShadowShader(const char* vertexCode, const char* fragmentCode);
 	void AddShader(GLuint theProgram, const char* shaderCode, GLenum shaderType);
 };
 

@@ -35,6 +35,15 @@ void Shader::createHUDFromFiles(const char* vertexLocation, const char* fragment
 	compileHUDShader(vertexCode, fragmentCode);
 
 }
+void Shader::createShadowFromFiles(const char* vertexLocation, const char* fragmentLocation) {
+	std::string vertexString = ReadFile(vertexLocation);
+	std::string fragmentString = ReadFile(fragmentLocation);
+	const char* vertexCode = vertexString.c_str();
+	const char* fragmentCode = fragmentString.c_str();
+
+	CompileShadowShader(vertexCode, fragmentCode);
+
+}
 
 std::string Shader::ReadFile(const char* fileLocation)
 {
@@ -201,6 +210,48 @@ void Shader::compileHUDShader(const char* vertexCode, const char* fragmentCode) 
 
 	uniformProjection = glGetUniformLocation(shaderID, "projection");
 	uniformModel = glGetUniformLocation(shaderID, "model");
+}
+
+void Shader::CompileShadowShader(const char* vertexCode, const char* fragmentCode) {
+	shaderID = glCreateProgram();
+
+	if (!shaderID)
+	{
+		printf("Error creating shader program!\n");
+		return;
+	}
+
+	AddShader(shaderID, vertexCode, GL_VERTEX_SHADER);
+	AddShader(shaderID, fragmentCode, GL_FRAGMENT_SHADER);
+
+	GLint result = 0;
+	GLchar eLog[1024] = { 0 };
+
+	glLinkProgram(shaderID);
+	glGetProgramiv(shaderID, GL_LINK_STATUS, &result);
+	if (!result)
+	{
+		glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
+		printf("Error linking program: '%s'\n", eLog);
+		return;
+	}
+
+
+	glValidateProgram(shaderID);
+	glGetProgramiv(shaderID, GL_VALIDATE_STATUS, &result);
+	if (!result)
+	{
+		glGetProgramInfoLog(shaderID, sizeof(eLog), NULL, eLog);
+		printf("Error validating program: '%s'\n", eLog);
+		return;
+	}
+
+	uniformProjection = glGetUniformLocation(shaderID, "projection");
+	uniformModel = glGetUniformLocation(shaderID, "model");
+	uniformLightPos = glGetUniformLocation(shaderID, "lightPos");
+	uniformEyePosition = glGetUniformLocation(shaderID, "eyePosition");
+	uniformLightSpaceMatrix = glGetUniformLocation(shaderID, "lightSpaceMatrix");
+	uniformView = glGetUniformLocation(shaderID, "view");
 }
 
 GLuint Shader::GetProjectionLocation()

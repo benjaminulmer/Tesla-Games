@@ -35,13 +35,13 @@ void Shader::createHUDFromFiles(const char* vertexLocation, const char* fragment
 	compileHUDShader(vertexCode, fragmentCode);
 
 }
-void Shader::createShadowFromFiles(const char* vertexLocation, const char* fragmentLocation) {
+void Shader::createDepthShaderFromFiles(const char* vertexLocation, const char* fragmentLocation) {
 	std::string vertexString = ReadFile(vertexLocation);
 	std::string fragmentString = ReadFile(fragmentLocation);
 	const char* vertexCode = vertexString.c_str();
 	const char* fragmentCode = fragmentString.c_str();
 
-	CompileShadowShader(vertexCode, fragmentCode);
+	CompileDepthShader(vertexCode, fragmentCode);
 
 }
 
@@ -212,7 +212,7 @@ void Shader::compileHUDShader(const char* vertexCode, const char* fragmentCode) 
 	uniformModel = glGetUniformLocation(shaderID, "model");
 }
 
-void Shader::CompileShadowShader(const char* vertexCode, const char* fragmentCode) {
+void Shader::CompileDepthShader(const char* vertexCode, const char* fragmentCode) {
 	shaderID = glCreateProgram();
 
 	if (!shaderID)
@@ -246,12 +246,8 @@ void Shader::CompileShadowShader(const char* vertexCode, const char* fragmentCod
 		return;
 	}
 
-	uniformProjection = glGetUniformLocation(shaderID, "projection");
 	uniformModel = glGetUniformLocation(shaderID, "model");
-	uniformLightPos = glGetUniformLocation(shaderID, "lightPos");
-	uniformEyePosition = glGetUniformLocation(shaderID, "eyePosition");
 	uniformLightSpaceMatrix = glGetUniformLocation(shaderID, "lightSpaceMatrix");
-	uniformView = glGetUniformLocation(shaderID, "view");
 }
 
 GLuint Shader::GetProjectionLocation()

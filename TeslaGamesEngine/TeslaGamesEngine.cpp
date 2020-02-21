@@ -139,13 +139,7 @@ static const char* vShader = "Shaders/shader.vert";
 
 // Fragment Shader
 static const char* fShader = "Shaders/shader.frag";
-/*
-// Vertex Shader of HUD_shader
-static const char* vHshader = "Shaders/HUD_shader.vert";
 
-//Fragment shader of HUD_shader
-static const char* fHshader = "Shaders/HUD_shader.frag";
-*/
 struct yawPitch {
 	float yaw;
 	float pitch;

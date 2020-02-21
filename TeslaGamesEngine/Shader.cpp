@@ -110,6 +110,7 @@ void Shader::CompileShader(const char* vertexCode, const char* fragmentCode)
 	uniformSpecularIntensity = glGetUniformLocation(shaderID, "material.specularIntensity");
 	uniformShininess = glGetUniformLocation(shaderID, "material.shininess");
 	uniformEyePosition = glGetUniformLocation(shaderID, "eyePosition");
+	uniformLightSpaceMatrix = glGetUniformLocation(shaderID, "lightSpaceMatrix");
 
 	uniformPointLightCount = glGetUniformLocation(shaderID, "pointLightCount");
 
@@ -289,6 +290,9 @@ GLuint Shader::GetShininessLocation()
 GLuint Shader::GetEyePositionLocation()
 {
 	return uniformEyePosition;
+}
+GLuint Shader::GetLightSpaceMatrix() {
+	return uniformLightSpaceMatrix;
 }
 
 void Shader::SetDirectionalLight(DirectionalLight * dLight)

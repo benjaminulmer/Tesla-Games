@@ -49,6 +49,9 @@
 //HUD stuff
 #include "HUDcreator.h"
 
+//Shadow stuff
+#include "Shadow.h"
+
 // Stuff for imgui
 #include "imGui/imgui.h"
 #include "imGui/imgui_impl_glfw.h"
@@ -71,27 +74,12 @@ std::vector<Mesh*> meshList;
 std::vector<Shader> shaderList;
 std::vector<HUD*> HUDList;
 Camera camera;
+Shader *depthShader;
 
 Texture brickTexture;
 Texture dirtTexture;
 Texture plainTexture;
-
-//digit textures
-Texture dig0Texture;
-Texture dig1Texture;
-Texture dig2Texture;
-Texture dig3Texture;
-
-//HUD textures
-Texture weaponUITexture;
-Texture emptyBarTexture;
-Texture healthBarTexture;
-Texture nitroBarTexture;
-Texture plusSymbolTexture;
-Texture nitroSymbolTexture;
-Texture flagTexture;
-Texture personTexture;
-Texture cupTexture;
+Texture floorTexture;
 
 Material shinyMaterial;
 Material dullMaterial;
@@ -139,6 +127,13 @@ static const char* vShader = "Shaders/shader.vert";
 
 // Fragment Shader
 static const char* fShader = "Shaders/shader.frag";
+
+//Depth shader
+static const char* vDepthShader = "Shaders/depthShader.vert";
+static const char* fDepthShader = "Shaders/depthShader.frag";
+
+//Shadow stuff
+const unsigned int SHADOW_WIDTH = 1024, SHADOW_HEIGHT = 1024;
 
 struct yawPitch {
 	float yaw;
@@ -237,7 +232,8 @@ void CreateShaders()
 	shader1->CreateFromFiles(vShader, fShader);
 	shaderList.push_back(*shader1);
 	
-
+	depthShader = new Shader();
+	depthShader->createDepthShaderFromFiles(vDepthShader, fDepthShader);
 }
 
 
@@ -344,6 +340,8 @@ int main()
 	HUDcreator hud;
 	hud.load();
 
+	Shadow shadow = Shadow::Shadow();
+
 	Renderer r = Renderer(mainWindow, camera);
 
 	Game mainGame = Game(r);
@@ -374,7 +372,8 @@ int main()
 	dirtTexture.LoadTextureAlpha();
 	plainTexture = Texture("Textures/plain.png");
 	plainTexture.LoadTextureAlpha();
-
+	floorTexture = Texture("Textures/floorConcrete.png");
+	floorTexture.LoadTexture();
 	
 	shinyMaterial = Material(4.0f, 256);
 	dullMaterial = Material(0.3f, 4);
@@ -394,7 +393,7 @@ int main()
 								-4.0f, 2.0f, 0.0f,
 								0.3f, 0.1f, 0.1f);
 	//pointLightCount++;
-
+	
 	unsigned int spotLightCount = 0;
 	spotLights[0] = SpotLight(1.0f, 1.0f, 1.0f,
 						0.0f, 2.0f,
@@ -410,9 +409,9 @@ int main()
 		1.0f, 0.0f, 0.0f,
 		20.0f);
 	spotLightCount++;
-
+	
 	GLuint uniformProjection = 0, uniformModel = 0, uniformView = 0, uniformEyePosition = 0,
-		uniformSpecularIntensity = 0, uniformShininess = 0;
+		uniformSpecularIntensity = 0, uniformShininess = 0, uniformLightSpaceMatrix = 0;
 	glm::mat4 projection = glm::perspective(45.0f, (GLfloat)mainWindow.getBufferWidth() / mainWindow.getBufferHeight(), 0.1f, 100.0f);
 
 	TeslaCar.LoadModel("Models/TeslaGamesTruck2.obj");
@@ -420,6 +419,9 @@ int main()
 	//TeslaCar.LoadModel("Models/TeslaGamesTruck.obj");
 	racetrack.LoadModel("Models/track2.obj");
 	bulletobj.LoadModel("Models/bullet.obj");
+
+	shadow.createShadowMap();
+
 	// TODO: Put FPS code into Game.Play()
 	// Loop until window closed
 
@@ -484,6 +486,7 @@ int main()
 	//physEng.upwards();
 	//End of audio system setup/demo
 
+	glm::vec3 lightPos(-10.f, 10.0f, -10.f);
 
 	while (!mainWindow.getShouldClose())
 	{
@@ -514,10 +517,40 @@ int main()
 		glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
-		//turn on depth testing
-		glEnable(GL_DEPTH_TEST);
+		// 1. render depth of scene to texture (from light's perspective)
+		// --------------------------------------------------------------
+		glm::mat4 lightProjection, lightView;
+		glm::mat4 lightSpaceMatrix;
+		glm::mat4 model = glm::mat4(1.0f);
+		float near_plane = 1.0f, far_plane = 75;
+		lightProjection = glm::ortho(-100.0f, 100.0f, -100.0f, 100.0f, near_plane, far_plane);
+		lightView = glm::lookAt(lightPos, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+		lightSpaceMatrix = lightProjection * lightView;
+
+		//use depth shader
+		unsigned int depthMapFBO = 0;
+		depthShader->UseShader();
+		uniformLightSpaceMatrix = depthShader->GetLightSpaceMatrix();
+		glUniformMatrix4fv(uniformLightSpaceMatrix, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
+
+		glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
+		glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		model = glm::mat4(1.0f);
+		model = glm::translate(model, glm::vec3(0.0f, -2.0f, -2.f));
+		model = glm::scale(model, glm::vec3(10.f, 10.f, 10.f));
+		glUniformMatrix4fv(uniformModel, 1, GL_FALSE, glm::value_ptr(model));
+		shinyMaterial.UseMaterial(uniformSpecularIntensity, uniformShininess);
+		racetrack.RenderModel();
+		glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+		//reset view port
+		glViewport(0, 0, mainWindow.getWidth(), mainWindow.getHeight());
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
 		// Setup shader
+		// 2. render scene as normal using the generated depth/shadow map  
 		shaderList[0].UseShader();
 		uniformModel = shaderList[0].GetModelLocation();
 		uniformProjection = shaderList[0].GetProjectionLocation();
@@ -525,6 +558,7 @@ int main()
 		uniformEyePosition = shaderList[0].GetEyePositionLocation();
 		uniformSpecularIntensity = shaderList[0].GetSpecularIntensityLocation();
 		uniformShininess = shaderList[0].GetShininessLocation();
+		uniformLightSpaceMatrix = shaderList[0].GetLightSpaceMatrix();
 
 		glm::vec3 lowerLight = camera.getCameraPosition();
 		lowerLight.y -= 0.3f;
@@ -538,6 +572,7 @@ int main()
 
 		glUniformMatrix4fv(uniformProjection, 1, GL_FALSE, glm::value_ptr(projection));
 		glUniformMatrix4fv(uniformView, 1, GL_FALSE, glm::value_ptr(camera.calculateViewMatrix()));
+		glUniformMatrix4fv(uniformLightSpaceMatrix, 1, GL_FALSE, glm::value_ptr(lightSpaceMatrix));
 		glUniform3f(uniformEyePosition, camera.getCameraPosition().x, camera.getCameraPosition().y, camera.getCameraPosition().z);
 
 		shaderList[0].UseShader();
@@ -545,7 +580,7 @@ int main()
 		uniformProjection = shaderList[0].GetProjectionLocation();
 
 		// Draw pyramid one
-		glm::mat4 model = glm::mat4(1.0f);
+		
 /*
 		model = glm::translate(model, glm::vec3(0.0f, 0.0f, -2.5f));
 		//model = glm::scale(model, glm::vec3(0.4f, 0.4f, 1.0f));

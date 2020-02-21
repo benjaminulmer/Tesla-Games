@@ -75,7 +75,7 @@ float ShadowCalculation(vec4 fragPosLightSpace)
     return shadow;
 }
 
-vec4 CalcLightByDirection(Light light, vec3 direction, vec4 fragPosLightSpace))
+vec4 CalcLightByDirection(Light light, vec3 direction, vec4 fragPosLightSpace)
 {
 	vec4 ambientColour = vec4(light.colour, 1.0f) * light.ambientIntensity;
 	
@@ -97,7 +97,7 @@ vec4 CalcLightByDirection(Light light, vec3 direction, vec4 fragPosLightSpace))
 		}
 	}
 
-	float shadow = ShadowCalculation(fs_in.FragPosLightSpace); 
+	float shadow = ShadowCalculation(FragPosLightSpace); 
 
 	return (ambientColour + (1.0 - shadow) * (diffuseColour + specularColour));
 }
@@ -113,7 +113,7 @@ vec4 CalcPointLight(PointLight pLight)
 	float distance = length(direction);
 	direction = normalize(direction);
 	
-	vec4 colour = CalcLightByDirection(pLight.base, direction);
+	vec4 colour = CalcLightByDirection(pLight.base, direction, FragPosLightSpace);
 	float attenuation = pLight.exponent * distance * distance +
 						pLight.linear * distance +
 						pLight.constant;
